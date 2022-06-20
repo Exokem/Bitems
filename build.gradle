@@ -18,7 +18,7 @@ plugins {
 apply plugin: 'net.minecraftforge.gradle'
 apply plugin: 'org.spongepowered.mixin'
 
-version = '1.19-1.0'
+version = '1.19-1.1'
 group = 'bitems' // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = 'bitems'
 
