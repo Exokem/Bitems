@@ -3,10 +3,8 @@ package bitems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.language.ClientLanguage;
 import net.minecraft.locale.Language;
-import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.ForgeConfigSpec;
@@ -66,7 +64,7 @@ public class Configuration
         }
 
         @Nullable
-        public SecondaryTranslationComponent getTranslated(String target, Style style, Object... args)
+        public MutableComponent getTranslated(String target, Style style, Object... args)
         {
             if (secondaryLanguage == null)
             {
@@ -87,7 +85,9 @@ public class Configuration
             if (translated.equals(target))
                 return null;
 
-            SecondaryTranslationComponent component = new SecondaryTranslationComponent(target, secondaryLanguage, args);
+
+            MutableComponent component = MutableComponent.create(new SecondaryTranslationContents(target, secondaryLanguage, args))
+                    ;
             component.setStyle(style);
 
             return component;

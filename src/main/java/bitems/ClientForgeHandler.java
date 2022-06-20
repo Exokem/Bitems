@@ -1,15 +1,16 @@
 package bitems;
 
-import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.network.chat.ComponentContents;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.contents.LiteralContents;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.world.item.PotionItem;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.spongepowered.asm.mixin.Mutable;
 
 import javax.annotation.Nullable;
 
@@ -62,44 +63,61 @@ public class ClientForgeHandler
     @Nullable
     private static Component resolve(Component source, boolean ignoreUntranslatable)
     {
-        if (source instanceof TranslatableComponent translatableSource)
+        if (source instanceof MutableComponent translatableSource)
         {
-            Object[] args = new Object[translatableSource.getArgs().length];
+            ComponentContents contents = translatableSource.getContents();
 
-            int i = 0;
-
-            for (Object arg : translatableSource.getArgs())
+            if (contents instanceof TranslatableContents secContents)
             {
-                if (arg instanceof TranslatableComponent translatableArg)
+                Object[] args = new Object[secContents.getArgs().length];
+
+                int i = 0;
+
+                for (Object arg : secContents.getArgs())
                 {
-                    Component resolvedArg = resolve(translatableArg, false);
-                    args[i++] = resolvedArg == null ? arg : resolvedArg;
+                    if (arg instanceof MutableComponent translatableArg)
+                    {
+                        Component resolvedArg = resolve(translatableArg, false);
+                        args[i++] = resolvedArg == null ? arg : resolvedArg;
+                    }
+
+                    else
+                    {
+                        args[i++] = arg;
+                    }
                 }
 
-                else
-                {
-                    args[i++] = arg;
-                }
+                MutableComponent component = Configuration.LANGUAGE_CONFIGURATION.getTranslated(secContents.getKey(), translatableSource.getStyle(), args);
+
+                if (component == null)
+                    return null;
+
+                resolveSiblings(translatableSource, component);
+
+                return component;
             }
 
-            SecondaryTranslationComponent component = Configuration.LANGUAGE_CONFIGURATION.getTranslated(translatableSource.getKey(), translatableSource.getStyle(), args);
+            else if (contents instanceof LiteralContents literalContents)
+            {
+                if (source.getSiblings().isEmpty() && ignoreUntranslatable)
+                    return null;
 
-            if (component == null)
-                return null;
+                MutableComponent resolvedText = Component.literal(literalContents.text());
+                resolvedText.setStyle(source.getStyle());
+                resolveSiblings(source, resolvedText);
+                return resolvedText;
+            }
 
-            resolveSiblings(translatableSource, component);
+            else
+            {
+                if (source.getSiblings().isEmpty() && ignoreUntranslatable)
+                    return null;
 
-            return component;
-        }
-
-        else if (source instanceof TextComponent textSource)
-        {
-            if (textSource.getSiblings().isEmpty() && ignoreUntranslatable)
-                return null;
-            TextComponent resolvedText = new TextComponent(textSource.getText());
-            resolvedText.setStyle(textSource.getStyle());
-            resolveSiblings(textSource, resolvedText);
-            return resolvedText;
+                MutableComponent resolvedText = Component.literal("");
+                resolvedText.setStyle(source.getStyle());
+                resolveSiblings(source, resolvedText);
+                return resolvedText;
+            }
         }
 
         return null;
@@ -109,9 +127,9 @@ public class ClientForgeHandler
     {
         for (Component sibling : source.getSiblings())
         {
-            if (sibling instanceof TranslatableComponent translatableSibling)
+            if (sibling instanceof MutableComponent translatableSibling)
             {
-                Component resolvedSibling = resolve(sibling, false);
+                Component resolvedSibling = resolve(translatableSibling, false);
 
                 if (resolvedSibling != null)
                     target.getSiblings().add(resolvedSibling);
